@@ -321,3 +321,87 @@ echo "config/keys.py" >> .gitignore
 ```
 
 You can now proceed with implementing the project code in the respective files and directories.
+
+---
+
+Certainly! Let's containerize the ForexBacktesterOanda project using Docker. We'll create a Dockerfile to define the container image and a docker-compose.yml file to manage the services and their configurations.
+
+Here's an example of how you can structure your Dockerfile and docker-compose.yml:
+
+Dockerfile:
+```dockerfile
+FROM python:3.9
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY config/ ./config/
+COPY data/ ./data/
+
+CMD ["python", "src/main.py"]
+```
+
+Explanation:
+- The Dockerfile starts with the Python 3.9 base image.
+- It sets the working directory to `/app` inside the container.
+- It copies the `requirements.txt` file and installs the project dependencies using `pip`.
+- It copies the `src/`, `config/`, and `data/` directories into the container.
+- The `CMD` instruction specifies the command to run when the container starts, which is executing the `main.py` script.
+
+docker-compose.yml:
+```yaml
+version: '3'
+
+services:
+  forex-backtester:
+    build: .
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - ./data:/app/data
+    environment:
+      - OANDA_API_KEY=${OANDA_API_KEY}
+```
+
+Explanation:
+- The docker-compose.yml file defines a single service named `forex-backtester`.
+- It builds the container image using the Dockerfile in the current directory (`.`).
+- It mounts the `src/`, `config/`, and `data/` directories as volumes, allowing changes made in the host machine to be reflected in the container.
+- It sets the `OANDA_API_KEY` environment variable using the value from the host machine's environment.
+
+To run the project using Docker Compose, follow these steps:
+
+1. Make sure you have Docker and Docker Compose installed on your machine.
+
+2. Create a `.env` file in the project root directory and set the `OANDA_API_KEY` variable with your Oanda API key:
+   ```
+   OANDA_API_KEY=your_api_key_here
+   ```
+
+3. Open a terminal, navigate to the project root directory, and run the following command to build and start the containers:
+   ```
+   docker-compose up --build
+   ```
+
+   This command will build the container image and start the `forex-backtester` service.
+
+4. To run the backtester, execute the following command:
+   ```
+   docker-compose run forex-backtester python src/backtester/backtester.py
+   ```
+
+   This command will run the `backtester.py` script inside the `forex-backtester` container.
+
+5. To stop the containers, press `Ctrl+C` in the terminal or run the following command in a separate terminal:
+   ```
+   docker-compose down
+   ```
+
+   This command will stop and remove the containers.
+
+By containerizing the project with Docker, you ensure a consistent runtime environment across different machines and make it easier to deploy and scale the application.
+
+Remember to update the `requirements.txt` file with any additional dependencies your project requires, and adjust the Dockerfile and docker-compose.yml file as needed based on your project's specific requirements.
