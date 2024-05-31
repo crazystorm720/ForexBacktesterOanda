@@ -1,8 +1,8 @@
-# ForexBacktesterOanda
+# QuantDynamics
 
 ## Project Overview
 
-ForexBacktesterOanda is a Python-based project that facilitates the backtesting of forex trading strategies using historical data from the Oanda API. The project focuses on fetching and storing forex data in an SQLite database and provides a framework for implementing and evaluating various trading strategies.
+QuantDynamics is a Python-based project that facilitates the backtesting of forex trading strategies using historical data from the Oanda API. The project focuses on fetching and storing forex data in an SQLite database and provides a framework for implementing and evaluating various trading strategies.
 
 ## Key Features
 
