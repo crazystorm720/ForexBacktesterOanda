@@ -474,3 +474,133 @@ To run the project using Docker Compose, follow these steps:
 By containerizing the project with Docker, you ensure a consistent runtime environment across different machines and make it easier to deploy and scale the application.
 
 Remember to update the `requirements.txt` file with any additional dependencies your project requires, and adjust the Dockerfile and docker-compose.yml file as needed based on your project's specific requirements.
+
+---
+
+Certainly! Let's review the code for the data ingestion portion of the QuantDynamics project, specifically the `src/data/data_ingestion.py` and `src/data/database.py` files. We'll go through the code step by step and ensure its correctness and robustness.
+
+First, let's review the `src/data/data_ingestion.py` file:
+
+```python
+import datetime
+import argparse
+import oandapyV20
+import oandapyV20.endpoints.instruments as instruments
+from config.keys import OANDA_API_KEY
+from src.data.database import create_connection, save_data_to_db
+
+def fetch_historical_data(instrument, granularity, count):
+    client = oandapyV20.API(access_token=OANDA_API_KEY)
+    params = {
+        "granularity": granularity,
+        "count": count
+    }
+    request = instruments.InstrumentsCandles(instrument=instrument, params=params)
+    try:
+        response = client.request(request)
+        candles = response['candles']
+        return candles
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        return []
+
+def ingest_historical_data(instrument, granularity, count):
+    data = fetch_historical_data(instrument, granularity, count)
+    if not data:
+        print("No data to save.")
+        return
+    conn = create_connection()
+    if conn:
+        save_data_to_db(conn, data)
+        conn.close()
+    else:
+        print("Failed to create database connection.")
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Ingest historical forex data.')
+    parser.add_argument('--instrument', type=str, default='EUR_USD', help='Forex instrument (e.g., EUR_USD)')
+    parser.add_argument('--granularity', type=str, default='H1', help='Data granularity (e.g., H1 for hourly)')
+    parser.add_argument('--days', type=int, default=180, help='Number of days of historical data to fetch')
+
+    args = parser.parse_args()
+
+    instrument = args.instrument
+    granularity = args.granularity
+    end_date = datetime.datetime.now()
+    start_date = end_date - datetime.timedelta(days=args.days)
+    count = int((end_date - start_date).total_seconds() // 3600)  # Number of hours in specified days
+
+    ingest_historical_data(instrument, granularity, count)
+```
+
+Code Review:
+1. The necessary modules are imported correctly, including `oandapyV20` for interacting with the Oanda API and `database` for database operations.
+2. The `fetch_historical_data` function takes the instrument, granularity, and count as parameters and fetches the historical data using the Oanda API. The function returns the fetched candles or an empty list if an exception occurs.
+3. The `ingest_historical_data` function calls `fetch_historical_data` to retrieve the data and then saves it to the database using the `save_data_to_db` function from `database.py`. It handles cases when no data is returned or when the database connection fails.
+4. The `__main__` block uses `argparse` to parse command-line arguments for the instrument, granularity, and the number of days of historical data to fetch. It calculates the count based on the specified number of days and calls the `ingest_historical_data` function with the appropriate parameters.
+5. The code is well-structured, modular, and follows best practices for error handling and database connection management.
+
+Now, let's review the `src/data/database.py` file:
+
+```python
+import sqlite3
+
+def create_connection():
+    try:
+        conn = sqlite3.connect('data/forex_data.db')
+        create_table(conn)
+        return conn
+    except sqlite3.Error as e:
+        print(f"Error creating connection: {e}")
+        return None
+
+def create_table(conn):
+    sql = '''CREATE TABLE IF NOT EXISTS forex_data (
+                 id INTEGER PRIMARY KEY,
+                 timestamp TEXT,
+                 open REAL,
+                 high REAL,
+                 low REAL,
+                 close REAL,
+                 volume INTEGER
+             )'''
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql)
+    except sqlite3.Error as e:
+        print(f"Error creating table: {e}")
+
+def save_data_to_db(conn, data):
+    sql = '''INSERT INTO forex_data (timestamp, open, high, low, close, volume)
+             VALUES (?, ?, ?, ?, ?, ?)'''
+    try:
+        cursor = conn.cursor()
+        for candle in data:
+            timestamp = candle['time']
+            open_price = float(candle['mid']['o'])
+            high_price = float(candle['mid']['h'])
+            low_price = float(candle['mid']['l'])
+            close_price = float(candle['mid']['c'])
+            volume = int(candle['volume'])
+            cursor.execute(sql, (timestamp, open_price, high_price, low_price, close_price, volume))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error saving data: {e}")
+```
+
+Code Review:
+1. The `sqlite3` module is imported for interacting with the SQLite database.
+2. The `create_connection` function establishes a connection to the SQLite database and creates the necessary table if it doesn't exist. It handles exceptions and returns the connection object or `None` if an error occurs.
+3. The `create_table` function creates the `forex_data` table with the specified schema if it doesn't already exist. It handles exceptions and prints an error message if an error occurs.
+4. The `save_data_to_db` function takes the database connection and the fetched data as parameters. It inserts the data into the `forex_data` table using parameterized queries to prevent SQL injection vulnerabilities. It handles exceptions and prints an error message if an error occurs.
+5. The code uses appropriate exception handling and error messages to handle potential issues during database operations.
+
+Overall, the code for the data ingestion portion of the QuantDynamics project appears to be well-structured, modular, and follows best practices for data retrieval, database management, and error handling. The code is readable, and the functions have clear responsibilities.
+
+However, here are a few suggestions for further improvement:
+1. Consider adding more detailed error messages or logging to help with debugging and troubleshooting.
+2. You may want to add more granular exception handling to catch specific types of exceptions and handle them appropriately.
+3. Consider adding comments or docstrings to explain the purpose and functionality of each function.
+4. You may want to add configuration options for the database file path and table schema to make the code more flexible and reusable.
+
+Otherwise, the code looks solid and ready for use in the QuantDynamics project.
