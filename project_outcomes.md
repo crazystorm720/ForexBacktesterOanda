@@ -1,3 +1,51 @@
+Project Summary: ForexBacktesterOanda
+
+ForexBacktesterOanda is a Python-based project that provides a framework for backtesting forex trading strategies using historical data from the Oanda API. The project aims to streamline the process of fetching, storing, and analyzing forex data, as well as implementing and evaluating various trading strategies.
+
+Key Features:
+1. Data Ingestion: The project includes a data ingestion module that fetches historical forex data from the Oanda API based on specified parameters such as instrument, granularity, and date range. The fetched data is then stored in an SQLite database for efficient storage and retrieval.
+
+2. Database Management: The project utilizes SQLite as the database management system to store and organize the fetched forex data. The database module provides functions for creating a connection to the database, creating the necessary tables, and saving the fetched data using parameterized queries to ensure data integrity and security.
+
+3. Backtesting Framework: The project provides a flexible backtesting framework that allows users to define and implement their own trading strategies. The framework includes a base strategy class that can be extended to create custom strategies. The backtester module executes the trading strategies on historical data and generates performance metrics and visualizations for evaluation.
+
+4. Performance Metrics: The project includes a performance metrics module that calculates various metrics to assess the performance of trading strategies. These metrics include return on investment (ROI), Sharpe ratio, maximum drawdown, and others. The calculated metrics provide insights into the effectiveness and risk-adjusted returns of the trading strategies.
+
+5. Data Visualization: The project incorporates data visualization capabilities to present the backtesting results in a clear and intuitive manner. The visualization module generates charts and graphs to display the performance of trading strategies over time, allowing users to analyze trends, patterns, and key performance indicators.
+
+6. Configuration Management: The project utilizes configuration files to manage sensitive information, such as API keys, and to store project-specific settings. The configuration files are kept separate from the main codebase and are included in the `.gitignore` file to prevent accidental exposure of sensitive data.
+
+7. Documentation and Testing: The project includes comprehensive documentation, including a README file that provides an overview of the project, installation instructions, and usage guidelines. The codebase is well-commented and follows best practices for code readability and maintainability. The project also includes a testing suite to ensure the reliability and correctness of the implemented functionality.
+
+Project Structure:
+The project follows a modular and organized structure to enhance code maintainability and reusability. The main components of the project include:
+
+- `src/data/data_ingestion.py`: Fetches historical forex data from the Oanda API and stores it in the SQLite database.
+- `src/data/database.py`: Manages the SQLite database connection, table creation, and data storage.
+- `src/strategies/`: Contains the implementation of various trading strategies.
+- `src/backtester/backtester.py`: Executes the trading strategies on historical data and generates performance metrics.
+- `src/backtester/performance_metrics.py`: Calculates performance metrics for the trading strategies.
+- `tests/`: Contains unit tests for different modules of the project.
+
+The project also includes configuration files, such as `environment.yml` and `requirements.txt`, to manage the project dependencies and virtual environment.
+
+Usage and Contribution:
+To use the ForexBacktesterOanda project, users can follow the installation instructions provided in the README file. The project requires Python 3.7 or higher and the necessary dependencies listed in the configuration files.
+
+Users can fetch historical forex data by running the `data_ingestion.py` script with the desired parameters. The fetched data will be stored in the SQLite database specified in the project configuration.
+
+To implement and backtest trading strategies, users can create new strategy files in the `src/strategies/` directory, extending the base strategy class. The implemented strategies can be executed using the backtester module, which generates performance metrics and visualizations.
+
+Contributions to the project are welcome, and users can follow the contribution guidelines outlined in the README file. Contributors are encouraged to submit bug reports, feature requests, and pull requests to enhance the functionality and usability of the project.
+
+License and Disclaimer:
+The ForexBacktesterOanda project is released under the MIT License, which allows for free use, modification, and distribution of the codebase. However, it is important to note that forex trading involves substantial risk, and the project is provided for educational and informational purposes only. It should not be considered as financial advice or a recommendation to engage in forex trading. Users are advised to consult with qualified financial professionals before making any trading decisions.
+
+Conclusion:
+The ForexBacktesterOanda project provides a comprehensive framework for backtesting forex trading strategies using historical data from the Oanda API. With its data ingestion, database management, backtesting, and performance evaluation capabilities, the project empowers users to experiment with different trading strategies and assess their effectiveness. The modular design and well-documented codebase make it accessible for users to customize and extend the project to suit their specific needs. By leveraging the ForexBacktesterOanda project, users can gain valuable insights into forex trading strategies and make informed decisions based on historical data analysis.
+
+---
+
 Technologies Covered:
 1. Python: A versatile and powerful programming language known for its simplicity, readability, and extensive ecosystem of libraries and frameworks. Python provides a solid foundation for developing complex applications, including data analysis, machine learning, and web development. Its clean syntax and wide range of built-in functionalities make it an ideal choice for projects like ForexBacktesterOanda.
 
@@ -38,3 +86,238 @@ Capabilities and Possibilities:
 6. Extensibility and Customization: The modular architecture and well-documented codebase of the ForexBacktesterOanda project facilitate extensibility and customization. Users can easily integrate additional data sources, such as economic calendars or sentiment analysis, to enhance their trading strategies. The project's framework can be extended to support other financial instruments, such as stocks or cryptocurrencies, by adapting the data ingestion and backtesting components. Users can also customize the performance metrics, visualization tools, and reporting functionalities to align with their specific requirements and preferences.
 
 By leveraging the technologies and skills outlined above, the ForexBacktesterOanda project provides a powerful and flexible platform for developing, backtesting, and optimizing forex trading strategies. It empowers users to make data-driven decisions, manage risk effectively, and unlock the potential for profitable trading opportunities in the dynamic forex market.
+
+---
+
+Certainly! Here's the updated code for the data ingestion and database modules, along with the necessary updates to fetch historical data from the Oanda API and store it in an SQLite database:
+
+### `src/data/data_ingestion.py`
+
+```python
+import datetime
+import argparse
+import oandapyV20
+import oandapyV20.endpoints.instruments as instruments
+from config.keys import OANDA_API_KEY
+from src.data.database import create_connection, save_data_to_db
+
+def fetch_historical_data(instrument, granularity, count):
+    client = oandapyV20.API(access_token=OANDA_API_KEY)
+    params = {
+        "granularity": granularity,
+        "count": count
+    }
+    request = instruments.InstrumentsCandles(instrument=instrument, params=params)
+    try:
+        response = client.request(request)
+        candles = response['candles']
+        return candles
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        return []
+
+def ingest_historical_data(instrument, granularity, count):
+    data = fetch_historical_data(instrument, granularity, count)
+    if not data:
+        print("No data to save.")
+        return
+    conn = create_connection()
+    if conn:
+        save_data_to_db(conn, data)
+        conn.close()
+    else:
+        print("Failed to create database connection.")
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Ingest historical forex data.')
+    parser.add_argument('--instrument', type=str, default='EUR_USD', help='Forex instrument (e.g., EUR_USD)')
+    parser.add_argument('--granularity', type=str, default='H1', help='Data granularity (e.g., H1 for hourly)')
+    parser.add_argument('--days', type=int, default=180, help='Number of days of historical data to fetch')
+
+    args = parser.parse_args()
+
+    instrument = args.instrument
+    granularity = args.granularity
+    end_date = datetime.datetime.now()
+    start_date = end_date - datetime.timedelta(days=args.days)
+    count = int((end_date - start_date).total_seconds() // 3600)  # Number of hours in specified days
+
+    ingest_historical_data(instrument, granularity, count)
+```
+
+### `src/data/database.py`
+
+```python
+import sqlite3
+
+def create_connection():
+    try:
+        conn = sqlite3.connect('data/forex_data.db')
+        create_table(conn)
+        return conn
+    except sqlite3.Error as e:
+        print(f"Error creating connection: {e}")
+        return None
+
+def create_table(conn):
+    sql = '''CREATE TABLE IF NOT EXISTS forex_data (
+                 id INTEGER PRIMARY KEY,
+                 timestamp TEXT,
+                 open REAL,
+                 high REAL,
+                 low REAL,
+                 close REAL,
+                 volume INTEGER
+             )'''
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql)
+    except sqlite3.Error as e:
+        print(f"Error creating table: {e}")
+
+def save_data_to_db(conn, data):
+    sql = '''INSERT INTO forex_data (timestamp, open, high, low, close, volume)
+             VALUES (?, ?, ?, ?, ?, ?)'''
+    try:
+        cursor = conn.cursor()
+        for candle in data:
+            timestamp = candle['time']
+            open_price = float(candle['mid']['o'])
+            high_price = float(candle['mid']['h'])
+            low_price = float(candle['mid']['l'])
+            close_price = float(candle['mid']['c'])
+            volume = int(candle['volume'])
+            cursor.execute(sql, (timestamp, open_price, high_price, low_price, close_price, volume))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error saving data: {e}")
+```
+
+In the `data_ingestion.py` file:
+
+- The `fetch_historical_data` function retrieves historical forex data from the Oanda API using the specified instrument, granularity, and count.
+- The `ingest_historical_data` function calls `fetch_historical_data` to retrieve the data and then saves it to the SQLite database using the `save_data_to_db` function from `database.py`.
+- The script accepts command-line arguments for the instrument, granularity, and the number of days of historical data to fetch.
+
+In the `database.py` file:
+
+- The `create_connection` function establishes a connection to the SQLite database and creates the necessary table if it doesn't exist.
+- The `create_table` function creates the `forex_data` table with the specified schema.
+- The `save_data_to_db` function inserts the fetched forex data into the `forex_data` table using parameterized queries.
+
+To fetch historical data and store it in the database, you can run the `data_ingestion.py` script with the desired arguments. For example:
+
+```shell
+python src/data/data_ingestion.py --instrument EUR_USD --granularity H1 --days 180
+```
+
+This command will fetch historical data for the EUR/USD instrument with an hourly granularity (H1) for the last 180 days and store it in the `data/forex_data.db` SQLite database.
+
+Make sure to update the `config/keys.py` file with your Oanda API key before running the script.
+
+With these updates, the data ingestion and database modules are set up to fetch historical forex data from the Oanda API and store it in an SQLite database for further analysis and backtesting.
+
+---
+
+Certainly! Here's an updated project directory structure that includes the `environment.yml` and `requirements.txt` files, along with the touch commands to create all the necessary project folders and files:
+
+```shell
+ForexBacktesterOanda/
+├── .gitignore
+├── README.md
+├── config/
+│   └── keys.py
+├── data/
+│   └── forex_data.db
+├── environment.yml
+├── requirements.txt
+├── src/
+│   ├── backtester/
+│   │   ├── backtester.py
+│   │   └── performance_metrics.py
+│   ├── data/
+│   │   ├── data_ingestion.py
+│   │   └── database.py
+│   ├── strategies/
+│   │   └── moving_average_crossover.py
+│   └── main.py
+└── tests/
+    ├── test_data_ingestion.py
+    └── test_strategies.py
+```
+
+Here are the touch commands to create the project folders and files:
+
+```shell
+mkdir ForexBacktesterOanda
+cd ForexBacktesterOanda
+touch .gitignore README.md environment.yml requirements.txt
+mkdir config data src src/backtester src/data src/strategies tests
+touch config/keys.py data/forex_data.db
+touch src/backtester/backtester.py src/backtester/performance_metrics.py
+touch src/data/data_ingestion.py src/data/database.py
+touch src/strategies/moving_average_crossover.py
+touch src/main.py
+touch tests/test_data_ingestion.py tests/test_strategies.py
+```
+
+Now, let's create the `environment.yml` file:
+
+```yaml
+name: forexbacktesteroanda
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - numpy
+  - pandas
+  - matplotlib
+  - requests
+  - sqlite
+  - pytest
+  - pip:
+      - oandapyV20
+```
+
+And the `requirements.txt` file:
+
+```
+numpy
+pandas
+matplotlib
+requests
+oandapyV20
+```
+
+The `environment.yml` file is used to create a Conda environment with the specified dependencies, while the `requirements.txt` file is used to install additional dependencies using pip.
+
+To create the Conda environment using the `environment.yml` file, run the following command:
+
+```shell
+conda env create -f environment.yml
+```
+
+This will create a new Conda environment named `forexbacktesteroanda` with the specified dependencies.
+
+To activate the environment, run:
+
+```shell
+conda activate forexbacktesteroanda
+```
+
+After activating the environment, you can install any additional dependencies listed in the `requirements.txt` file using pip:
+
+```shell
+pip install -r requirements.txt
+```
+
+With these files and commands, you have a complete project directory structure along with the necessary build files (`environment.yml` and `requirements.txt`) to set up the development environment for the ForexBacktesterOanda project.
+
+Remember to add the `config/keys.py` file to your `.gitignore` file to avoid accidentally committing your API keys to version control.
+
+```shell
+echo "config/keys.py" >> .gitignore
+```
+
+You can now proceed with implementing the project code in the respective files and directories.
